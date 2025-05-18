@@ -45,6 +45,11 @@ dev_dependencies:
   permission_handler:
   lottie:
   flutter_pdfview:
+  firebase_core:
+  firebase_storage:
+  firebase_auth:
+  cloud_firestore:
+  path_provider:
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -65,6 +70,8 @@ flutter:
   uses-material-design: true
   assets:
     - assets/animations/upload.json
+    - assets/animations/login_animation.json
+    - assets/animations/signup_animation.json
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

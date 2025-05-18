@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "214963078831",
+    "project_id": "resume-screening-1e007",
+    "storage_bucket": "resume-screening-1e007.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:214963078831:android:194e069e77e9355caef65a",
+        "android_client_info": {
+          "package_name": "com.example.resume_screening"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCBb7n8V769kDheFZxQWYAHkP9RbEBpMYI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

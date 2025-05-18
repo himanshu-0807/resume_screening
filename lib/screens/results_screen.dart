@@ -1,8 +1,4 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter_pdfview/flutter_pdfview.dart';
-import 'package:http/http.dart' as http;
-import 'dart:typed_data';
 import 'viewResumePage.dart'; // Import the ViewResumePage
 
 class ResultsPage extends StatelessWidget {
@@ -107,30 +103,23 @@ class ResultsPage extends StatelessWidget {
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(
-                              onPressed: () async {
-                                // Fetch the resume URL from backend
-                                final response = await http.get(
-                                  Uri.parse(
-                                      'http://your-backend-url/view_resume/${resume['resume']}'),
-                                );
-
-                                if (response.statusCode == 200) {
-                                  // If it's a PDF, show it in PDFView
+                              onPressed: () {
+                                // Check if we have a storage URL
+                                if (resume.containsKey('storage_url') && resume['storage_url'] != null) {
+                                  // Use the Firebase Storage URL to view the resume
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
                                       builder: (context) => ViewResumePage(
-                                        resumeFile: response.bodyBytes,
-                                        resumeId: 0,
-                                        resumeBase64:
-                                            '', // Provide the file data as bytes
+                                        storageUrl: resume['storage_url'],
+                                        resumeName: resume['name'] ?? 'Resume',
                                       ),
                                     ),
                                   );
                                 } else {
-                                  // Show error if file not found
+                                  // Show error if no URL is available
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('File not found')),
+                                    SnackBar(content: Text('Resume file not available')),
                                   );
                                 }
                               },

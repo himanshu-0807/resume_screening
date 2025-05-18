@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:resume_screening/screens/auth/login.dart';
 import 'package:resume_screening/screens/details_screen.dart';
 import 'package:resume_screening/screens/results_screen.dart';
-import 'package:resume_screening/screens/uplaod_screen.dart';
 
-void main() {
+import 'package:firebase_core/firebase_core.dart';
+import 'package:resume_screening/firebase_options.dart';
+import 'package:resume_screening/screens/uplaod_screen_new.dart';
+import 'package:resume_screening/screens/profile_screen.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(MaterialApp(
     debugShowCheckedModeBanner: false,
     theme: ThemeData(
@@ -76,11 +83,11 @@ void main() {
         elevation: 8,
       ),
     ),
-    initialRoute: '/',
+    home: LoginScreen(),
     routes: {
-      '/': (context) => UploadPage(),
       '/results': (context) => ResultsPage(),
       '/details': (context) => DetailsPage(),
+      '/profile': (context) => ProfilePage(),
     },
   ));
 }
