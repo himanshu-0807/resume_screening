@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:resume_screening/screens/details_screen.dart';
 import 'viewResumePage.dart'; // Import the ViewResumePage
 
 class ResultsPage extends StatelessWidget {
@@ -105,7 +106,8 @@ class ResultsPage extends StatelessWidget {
                             child: ElevatedButton.icon(
                               onPressed: () {
                                 // Check if we have a storage URL
-                                if (resume.containsKey('storage_url') && resume['storage_url'] != null) {
+                                if (resume.containsKey('storage_url') &&
+                                    resume['storage_url'] != null) {
                                   // Use the Firebase Storage URL to view the resume
                                   Navigator.push(
                                     context,
@@ -119,13 +121,44 @@ class ResultsPage extends StatelessWidget {
                                 } else {
                                   // Show error if no URL is available
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Resume file not available')),
+                                    SnackBar(
+                                        content:
+                                            Text('Resume file not available')),
                                   );
                                 }
                               },
                               icon: Icon(Icons.arrow_forward),
                               label: Text(
                                 'View Resume',
+                                style: TextStyle(fontSize: 16),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.indigoAccent,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                padding: EdgeInsets.symmetric(vertical: 14),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                // Navigate to details page
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => DetailsPage(
+                                      resume: resume,
+                                    ),
+                                  ),
+                                );
+                              },
+                              icon: Icon(Icons.info),
+                              label: Text(
+                                'View Details',
                                 style: TextStyle(fontSize: 16),
                               ),
                               style: ElevatedButton.styleFrom(

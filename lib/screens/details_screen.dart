@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
 class DetailsPage extends StatelessWidget {
+  final Map<String, dynamic> resume;
+
+  DetailsPage({required this.resume});
+
   @override
   Widget build(BuildContext context) {
-    final Map<String, dynamic> resume =
-        ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-
     return Scaffold(
       appBar: AppBar(title: Text('${resume['name']} Details')),
       body: Padding(

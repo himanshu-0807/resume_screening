@@ -86,7 +86,7 @@ void main() async {
     home: LoginScreen(),
     routes: {
       '/results': (context) => ResultsPage(),
-      '/details': (context) => DetailsPage(),
+      // '/details': (context) => DetailsPage(),
       '/profile': (context) => ProfilePage(),
     },
   ));

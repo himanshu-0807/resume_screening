@@ -12,35 +12,27 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 // Custom wave painter for decorative background
 class WavePainter extends CustomPainter {
   final Color color;
-  
+
   WavePainter(this.color);
-  
+
   @override
   void paint(Canvas canvas, Size size) {
     var paint = Paint()
       ..color = color
       ..style = PaintingStyle.fill;
-    
+
     var path = Path();
     path.moveTo(0, size.height * 0.7);
+    path.quadraticBezierTo(size.width * 0.25, size.height * 0.9,
+        size.width * 0.5, size.height * 0.8);
     path.quadraticBezierTo(
-      size.width * 0.25, 
-      size.height * 0.9, 
-      size.width * 0.5, 
-      size.height * 0.8
-    );
-    path.quadraticBezierTo(
-      size.width * 0.75, 
-      size.height * 0.7, 
-      size.width, 
-      size.height * 0.9
-    );
+        size.width * 0.75, size.height * 0.7, size.width, size.height * 0.9);
     path.lineTo(size.width, 0);
     path.lineTo(0, 0);
-    
+
     canvas.drawPath(path, paint);
   }
-  
+
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
@@ -50,18 +42,19 @@ class UploadPage extends StatefulWidget {
   _UploadPageState createState() => _UploadPageState();
 }
 
-class _UploadPageState extends State<UploadPage> with SingleTickerProviderStateMixin {
+class _UploadPageState extends State<UploadPage>
+    with SingleTickerProviderStateMixin {
   List<File>? selectedFiles;
   TextEditingController skillsController = TextEditingController();
   final AuthService _authService = AuthService();
   final StorageService _storageService = StorageService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  
+
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   bool _isLoading = false;
   String? _userName;
-  
+
   @override
   void initState() {
     super.initState();
@@ -78,14 +71,14 @@ class _UploadPageState extends State<UploadPage> with SingleTickerProviderStateM
     _animationController.forward();
     _getUserName();
   }
-  
+
   @override
   void dispose() {
     _animationController.dispose();
     skillsController.dispose();
     super.dispose();
   }
-  
+
   void _getUserName() {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
@@ -119,7 +112,7 @@ class _UploadPageState extends State<UploadPage> with SingleTickerProviderStateM
       _showErrorSnackBar('Please enter required skills.');
       return;
     }
-    
+
     setState(() {
       _isLoading = true;
     });
@@ -129,11 +122,11 @@ class _UploadPageState extends State<UploadPage> with SingleTickerProviderStateM
         : 'http://127.0.0.1:5000/upload';
 
     var request = http.MultipartRequest('POST', Uri.parse(url));
-    
+
     // List to store Firebase Storage URLs
     List<String> storageUrls = [];
     List<Map<String, dynamic>> fileMetadata = [];
-    
+
     // Upload each file to Firebase Storage first
     try {
       for (int i = 0; i < selectedFiles!.length; i++) {
@@ -141,51 +134,57 @@ class _UploadPageState extends State<UploadPage> with SingleTickerProviderStateM
         // Upload to Firebase Storage
         String downloadUrl = await _storageService.uploadResume(file);
         storageUrls.add(downloadUrl);
-        
+
         // Create metadata for the file
         String fileName = file.path.split('/').last;
         fileMetadata.add({
           'name': fileName,
           'url': downloadUrl,
           'type': fileName.split('.').last.toLowerCase(),
-          'uploadedAt': FieldValue.serverTimestamp(),
+          // 'uploadedAt': FieldValue.serverTimestamp(),
         });
-        
+
         // Add file to HTTP request for analysis
-        request.files.add(await http.MultipartFile.fromPath('resumes', file.path));
+        request.files
+            .add(await http.MultipartFile.fromPath('resumes', file.path));
       }
-      
+
       // Save file metadata to Firestore
       final userId = FirebaseAuth.instance.currentUser?.uid;
       if (userId != null) {
-        await _firestore.collection('users').doc(userId).collection('uploads').add({
+        await _firestore
+            .collection('users')
+            .doc(userId)
+            .collection('uploads')
+            .add({
           'files': fileMetadata,
           'skills': skillsController.text.trim(),
           'uploadedAt': FieldValue.serverTimestamp(),
         });
       }
-      
+
       // Add skills to the request
       request.fields['skills'] = skillsController.text.trim();
-      
+
       // Send request to analysis server
       var response = await request.send();
       if (response.statusCode == 200) {
         var responseData = await http.Response.fromStream(response);
         var data = jsonDecode(responseData.body);
-        
+
         // Add storage URLs to the results
         List<dynamic> rankedResumes = data['ranked_resumes'];
-        for (int i = 0; i < rankedResumes.length && i < storageUrls.length; i++) {
+        for (int i = 0;
+            i < rankedResumes.length && i < storageUrls.length;
+            i++) {
           rankedResumes[i]['storage_url'] = storageUrls[i];
         }
-        
+
         if (mounted) {
           setState(() {
             _isLoading = false;
           });
-          Navigator.pushNamed(context, '/results',
-              arguments: rankedResumes);
+          Navigator.pushNamed(context, '/results', arguments: rankedResumes);
         }
       } else {
         if (mounted) {
@@ -217,7 +216,7 @@ class _UploadPageState extends State<UploadPage> with SingleTickerProviderStateM
       ),
     );
   }
-  
+
   void _signOut() async {
     await _authService.signOut();
   }
@@ -225,7 +224,7 @@ class _UploadPageState extends State<UploadPage> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
-    
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -234,7 +233,7 @@ class _UploadPageState extends State<UploadPage> with SingleTickerProviderStateM
         title: Text(
           'Resume Screening',
           style: TextStyle(
-            fontSize: 24, 
+            fontSize: 24,
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
@@ -272,7 +271,7 @@ class _UploadPageState extends State<UploadPage> with SingleTickerProviderStateM
               ),
             ),
           ),
-          
+
           // Top wave decoration
           Positioned(
             top: 0,
@@ -283,7 +282,7 @@ class _UploadPageState extends State<UploadPage> with SingleTickerProviderStateM
               painter: WavePainter(Colors.white.withOpacity(0.1)),
             ),
           ),
-          
+
           // Main content
           SafeArea(
             child: FadeTransition(
@@ -355,9 +354,9 @@ class _UploadPageState extends State<UploadPage> with SingleTickerProviderStateM
                         ],
                       ),
                     ),
-                    
+
                     SizedBox(height: 20),
-                    
+
                     // Animation
                     Center(
                       child: Container(
@@ -383,9 +382,9 @@ class _UploadPageState extends State<UploadPage> with SingleTickerProviderStateM
                         ),
                       ),
                     ),
-                    
+
                     SizedBox(height: 20),
-                    
+
                     // Skills input
                     Container(
                       decoration: BoxDecoration(
@@ -412,20 +411,23 @@ class _UploadPageState extends State<UploadPage> with SingleTickerProviderStateM
                           ),
                           filled: true,
                           fillColor: Colors.white,
-                          contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 16),
                         ),
                       ),
                     ),
-                    
+
                     SizedBox(height: 20),
-                    
+
                     // File selection button
                     ElevatedButton.icon(
                       onPressed: pickFiles,
-                      icon: Icon(Icons.file_upload_outlined, color: Colors.white),
+                      icon:
+                          Icon(Icons.file_upload_outlined, color: Colors.white),
                       label: Text(
                         'Select Resumes',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.indigo,
@@ -437,9 +439,9 @@ class _UploadPageState extends State<UploadPage> with SingleTickerProviderStateM
                         elevation: 5,
                       ),
                     ),
-                    
+
                     SizedBox(height: 16),
-                    
+
                     // Selected files list
                     Expanded(
                       child: Container(
@@ -454,31 +456,37 @@ class _UploadPageState extends State<UploadPage> with SingleTickerProviderStateM
                             ),
                           ],
                         ),
-                        child: selectedFiles != null && selectedFiles!.isNotEmpty
+                        child: selectedFiles != null &&
+                                selectedFiles!.isNotEmpty
                             ? ListView.separated(
                                 padding: EdgeInsets.all(16),
                                 itemCount: selectedFiles!.length,
                                 separatorBuilder: (context, index) => Divider(),
                                 itemBuilder: (context, index) {
-                                  final fileName = selectedFiles![index].path.split('/').last;
-                                  final fileExtension = fileName.split('.').last.toLowerCase();
-                                  
+                                  final fileName = selectedFiles![index]
+                                      .path
+                                      .split('/')
+                                      .last;
+                                  final fileExtension =
+                                      fileName.split('.').last.toLowerCase();
+
                                   return ListTile(
-                                    contentPadding: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                                    contentPadding: EdgeInsets.symmetric(
+                                        vertical: 4, horizontal: 8),
                                     leading: Container(
                                       padding: EdgeInsets.all(8),
                                       decoration: BoxDecoration(
-                                        color: fileExtension == 'pdf' 
-                                            ? Colors.red.shade100 
+                                        color: fileExtension == 'pdf'
+                                            ? Colors.red.shade100
                                             : Colors.blue.shade100,
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                       child: Icon(
-                                        fileExtension == 'pdf' 
-                                            ? Icons.picture_as_pdf 
+                                        fileExtension == 'pdf'
+                                            ? Icons.picture_as_pdf
                                             : Icons.article,
-                                        color: fileExtension == 'pdf' 
-                                            ? Colors.red.shade700 
+                                        color: fileExtension == 'pdf'
+                                            ? Colors.red.shade700
                                             : Colors.blue.shade700,
                                       ),
                                     ),
@@ -490,7 +498,8 @@ class _UploadPageState extends State<UploadPage> with SingleTickerProviderStateM
                                       ),
                                     ),
                                     trailing: IconButton(
-                                      icon: Icon(Icons.close, color: Colors.grey),
+                                      icon:
+                                          Icon(Icons.close, color: Colors.grey),
                                       onPressed: () {
                                         setState(() {
                                           selectedFiles!.removeAt(index);
@@ -533,15 +542,15 @@ class _UploadPageState extends State<UploadPage> with SingleTickerProviderStateM
                               ),
                       ),
                     ),
-                    
+
                     SizedBox(height: 20),
-                    
+
                     // Upload button
                     SizedBox(
                       height: 55,
                       child: ElevatedButton.icon(
                         onPressed: _isLoading ? null : uploadFiles,
-                        icon: _isLoading 
+                        icon: _isLoading
                             ? SizedBox(
                                 width: 20,
                                 height: 20,
@@ -553,7 +562,8 @@ class _UploadPageState extends State<UploadPage> with SingleTickerProviderStateM
                             : Icon(Icons.cloud_upload, color: Colors.white),
                         label: Text(
                           _isLoading ? 'Uploading...' : 'Upload and Analyze',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green.shade600,
@@ -572,7 +582,7 @@ class _UploadPageState extends State<UploadPage> with SingleTickerProviderStateM
               ),
             ),
           ),
-          
+
           // Loading overlay
           if (_isLoading)
             Container(
