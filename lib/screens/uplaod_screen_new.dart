@@ -8,6 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:resume_screening/services/auth_service.dart';
 import 'package:resume_screening/services/storage_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 // Custom wave painter for decorative background
 class WavePainter extends CustomPainter {
@@ -22,11 +23,9 @@ class WavePainter extends CustomPainter {
       ..style = PaintingStyle.fill;
 
     var path = Path();
-    path.moveTo(0, size.height * 0.7);
-    path.quadraticBezierTo(size.width * 0.25, size.height * 0.9,
-        size.width * 0.5, size.height * 0.8);
-    path.quadraticBezierTo(
-        size.width * 0.75, size.height * 0.7, size.width, size.height * 0.9);
+    path.moveTo(0, size.height * 0.65);
+    path.quadraticBezierTo(size.width * 0.3, size.height * 0.85, size.width * 0.5, size.height * 0.75);
+    path.quadraticBezierTo(size.width * 0.7, size.height * 0.65, size.width, size.height * 0.85);
     path.lineTo(size.width, 0);
     path.lineTo(0, 0);
 
@@ -42,8 +41,7 @@ class UploadPage extends StatefulWidget {
   _UploadPageState createState() => _UploadPageState();
 }
 
-class _UploadPageState extends State<UploadPage>
-    with SingleTickerProviderStateMixin {
+class _UploadPageState extends State<UploadPage> with SingleTickerProviderStateMixin {
   List<File>? selectedFiles;
   TextEditingController skillsController = TextEditingController();
   final AuthService _authService = AuthService();
@@ -60,13 +58,10 @@ class _UploadPageState extends State<UploadPage>
     super.initState();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 1000),
     );
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeIn,
-      ),
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
     _animationController.forward();
     _getUserName();
@@ -117,66 +112,47 @@ class _UploadPageState extends State<UploadPage>
       _isLoading = true;
     });
 
-    String url = Platform.isAndroid
-        ? 'http://192.168.184.133:5000/upload'
-        : 'http://127.0.0.1:5000/upload';
+    String url = Platform.isAndroid ? 'http://192.168.75.133:5000/upload' : 'http://127.0.0.1:5000/upload';
 
     var request = http.MultipartRequest('POST', Uri.parse(url));
 
-    // List to store Firebase Storage URLs
     List<String> storageUrls = [];
     List<Map<String, dynamic>> fileMetadata = [];
 
-    // Upload each file to Firebase Storage first
     try {
       for (int i = 0; i < selectedFiles!.length; i++) {
         File file = selectedFiles![i];
-        // Upload to Firebase Storage
         String downloadUrl = await _storageService.uploadResume(file);
         storageUrls.add(downloadUrl);
 
-        // Create metadata for the file
         String fileName = file.path.split('/').last;
         fileMetadata.add({
           'name': fileName,
           'url': downloadUrl,
           'type': fileName.split('.').last.toLowerCase(),
-          // 'uploadedAt': FieldValue.serverTimestamp(),
         });
 
-        // Add file to HTTP request for analysis
-        request.files
-            .add(await http.MultipartFile.fromPath('resumes', file.path));
+        request.files.add(await http.MultipartFile.fromPath('resumes', file.path));
       }
 
-      // Save file metadata to Firestore
       final userId = FirebaseAuth.instance.currentUser?.uid;
       if (userId != null) {
-        await _firestore
-            .collection('users')
-            .doc(userId)
-            .collection('uploads')
-            .add({
+        await _firestore.collection('users').doc(userId).collection('uploads').add({
           'files': fileMetadata,
           'skills': skillsController.text.trim(),
           'uploadedAt': FieldValue.serverTimestamp(),
         });
       }
 
-      // Add skills to the request
       request.fields['skills'] = skillsController.text.trim();
 
-      // Send request to analysis server
       var response = await request.send();
       if (response.statusCode == 200) {
         var responseData = await http.Response.fromStream(response);
         var data = jsonDecode(responseData.body);
 
-        // Add storage URLs to the results
         List<dynamic> rankedResumes = data['ranked_resumes'];
-        for (int i = 0;
-            i < rankedResumes.length && i < storageUrls.length;
-            i++) {
+        for (int i = 0; i < rankedResumes.length && i < storageUrls.length; i++) {
           rankedResumes[i]['storage_url'] = storageUrls[i];
         }
 
@@ -208,11 +184,15 @@ class _UploadPageState extends State<UploadPage>
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(
+          message,
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w500, color: Colors.white),
+        ),
         backgroundColor: Colors.red.shade700,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        margin: EdgeInsets.all(10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: EdgeInsets.all(16),
+        elevation: 6,
       ),
     );
   }
@@ -232,23 +212,22 @@ class _UploadPageState extends State<UploadPage>
         backgroundColor: Colors.transparent,
         title: Text(
           'Resume Screening',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
+          style: GoogleFonts.poppins(
+            fontSize: 26,
+            fontWeight: FontWeight.w600,
             color: Colors.white,
+            letterSpacing: 0.5,
           ),
         ),
         centerTitle: true,
         actions: [
           IconButton(
-            icon: Icon(Icons.person, color: Colors.white),
-            onPressed: () {
-              Navigator.pushNamed(context, '/profile');
-            },
+            icon: Icon(Icons.person, color: Colors.white, size: 28),
+            onPressed: () => Navigator.pushNamed(context, '/profile'),
             tooltip: 'Profile',
           ),
           IconButton(
-            icon: Icon(Icons.logout, color: Colors.white),
+            icon: Icon(Icons.logout, color: Colors.white, size: 28),
             onPressed: _signOut,
             tooltip: 'Logout',
           ),
@@ -256,30 +235,45 @@ class _UploadPageState extends State<UploadPage>
       ),
       body: Stack(
         children: [
-          // Background gradient
+          // Background gradient with glassmorphic effect
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
                 colors: [
-                  Colors.indigo.shade800,
-                  Colors.indigo.shade600,
-                  Colors.indigo.shade400,
-                  Colors.indigo.shade200,
+                  Colors.indigo.shade900,
+                  Colors.blue.shade700,
+                  Colors.blue.shade500,
+                  Colors.cyan.shade300,
                 ],
+                stops: [0.0, 0.4, 0.7, 1.0],
               ),
             ),
           ),
 
-          // Top wave decoration
+          // Wave decoration with softer opacity
           Positioned(
             top: 0,
             left: 0,
             right: 0,
             child: CustomPaint(
-              size: Size(screenSize.width, 200),
-              painter: WavePainter(Colors.white.withOpacity(0.1)),
+              size: Size(screenSize.width, 220),
+              painter: WavePainter(Colors.white.withOpacity(0.15)),
+            ),
+          ),
+
+          // Bottom wave for symmetry
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Transform(
+              transform: Matrix4.rotationX(3.14),
+              child: CustomPaint(
+                size: Size(screenSize.width, 180),
+                painter: WavePainter(Colors.white.withOpacity(0.1)),
+              ),
             ),
           ),
 
@@ -288,226 +282,262 @@ class _UploadPageState extends State<UploadPage>
             child: FadeTransition(
               opacity: _fadeAnimation,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Welcome message
-                    Container(
-                      padding: EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 10,
-                            offset: Offset(0, 5),
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Welcome card with glassmorphic effect
+                      Container(
+                        padding: EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white.withOpacity(0.2)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 20,
+                              offset: Offset(0, 10),
+                            ),
+                          ],
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.white.withOpacity(0.2),
+                              Colors.white.withOpacity(0.05),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              CircleAvatar(
-                                backgroundColor: Colors.indigo.shade100,
-                                radius: 25,
-                                child: Icon(
-                                  Icons.person,
-                                  size: 30,
-                                  color: Colors.indigo,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                CircleAvatar(
+                                  backgroundColor: Colors.white.withOpacity(0.3),
+                                  radius: 30,
+                                  child: Icon(
+                                    Icons.person_outline,
+                                    size: 36,
+                                    color: Colors.white,
+                                  ),
                                 ),
+                                SizedBox(width: 16),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Welcome,',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w400,
+                                        color: Colors.white.withOpacity(0.8),
+                                      ),
+                                    ),
+                                    Text(
+                                      _userName ?? 'User',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'Upload resumes to find top candidates tailored to your needs.',
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w400,
+                                color: Colors.white.withOpacity(0.7),
                               ),
-                              SizedBox(width: 12),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Welcome,',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: Colors.grey.shade700,
-                                    ),
-                                  ),
-                                  Text(
-                                    _userName ?? 'User',
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.indigo.shade800,
-                                    ),
-                                  ),
-                                ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      SizedBox(height: 24),
+
+                      // Animation with neumorphic container
+                      Center(
+                        child: Container(
+                          height: 180,
+                          width: 180,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.grey.shade200,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                offset: Offset(8, 8),
+                                blurRadius: 20,
+                              ),
+                              BoxShadow(
+                                color: Colors.white.withOpacity(0.7),
+                                offset: Offset(-8, -8),
+                                blurRadius: 20,
                               ),
                             ],
                           ),
-                          SizedBox(height: 16),
-                          Text(
-                            'Upload resumes and find the best candidates matching your requirements.',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey.shade600,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Lottie.asset(
+                              'assets/animations/upload.json',
+                              fit: BoxFit.contain,
                             ),
                           ),
-                        ],
+                        ),
                       ),
-                    ),
 
-                    SizedBox(height: 20),
+                      SizedBox(height: 24),
 
-                    // Animation
-                    Center(
-                      child: Container(
-                        height: 160,
-                        width: 160,
+                      // Skills input with glassmorphic effect
+                      Container(
                         decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.indigo.withOpacity(0.2),
-                              blurRadius: 15,
-                              spreadRadius: 5,
-                            ),
-                          ],
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: Lottie.asset(
-                            'assets/animations/upload.json',
-                            fit: BoxFit.contain,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(height: 20),
-
-                    // Skills input
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: Offset(0, 5),
-                          ),
-                        ],
-                      ),
-                      child: TextField(
-                        controller: skillsController,
-                        decoration: InputDecoration(
-                          labelText: 'Required Skills',
-                          hintText: 'e.g. Python, Machine Learning, SQL',
-                          floatingLabelBehavior: FloatingLabelBehavior.always,
-                          prefixIcon: Icon(Icons.code, color: Colors.indigo),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            borderSide: BorderSide.none,
-                          ),
-                          filled: true,
-                          fillColor: Colors.white,
-                          contentPadding: EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 16),
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(height: 20),
-
-                    // File selection button
-                    ElevatedButton.icon(
-                      onPressed: pickFiles,
-                      icon:
-                          Icon(Icons.file_upload_outlined, color: Colors.white),
-                      label: Text(
-                        'Select Resumes',
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.indigo,
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        elevation: 5,
-                      ),
-                    ),
-
-                    SizedBox(height: 16),
-
-                    // Selected files list
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: Colors.white.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white.withOpacity(0.2)),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 10,
-                              offset: Offset(0, 5),
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 20,
+                              offset: Offset(0, 10),
                             ),
                           ],
                         ),
-                        child: selectedFiles != null &&
-                                selectedFiles!.isNotEmpty
+                        child: TextField(
+                          controller: skillsController,
+                          style: GoogleFonts.poppins(color: Colors.white),
+                          decoration: InputDecoration(
+                            labelText: 'Required Skills',
+                            hintText: 'e.g. Python, Machine Learning, SQL',
+                            labelStyle: GoogleFonts.poppins(
+                              color: Colors.white.withOpacity(0.8),
+                              fontWeight: FontWeight.w500,
+                            ),
+                            hintStyle: GoogleFonts.poppins(
+                              color: Colors.white.withOpacity(0.5),
+                            ),
+                            prefixIcon: Icon(Icons.code, color: Colors.white.withOpacity(0.8)),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              borderSide: BorderSide.none,
+                            ),
+                            filled: true,
+                            fillColor: Colors.transparent,
+                            contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                          ),
+                        ),
+                      ),
+
+                      SizedBox(height: 24),
+
+                      // File selection button with animated press effect
+                      GestureDetector(
+                        onTapDown: (_) => _animationController.reverse(),
+                        onTapUp: (_) => _animationController.forward(),
+                        onTapCancel: () => _animationController.forward(),
+                        child: ScaleTransition(
+                          scale: Tween<double>(begin: 1.0, end: 0.95).animate(
+                            CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+                          ),
+                          child: ElevatedButton.icon(
+                            onPressed: pickFiles,
+                            icon: Icon(Icons.file_upload_outlined, color: Colors.white, size: 28),
+                            label: Text(
+                              'Select Resumes',
+                              style: GoogleFonts.poppins(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.indigo.shade600,
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.symmetric(vertical: 18, horizontal: 24),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              elevation: 8,
+                              shadowColor: Colors.indigo.withOpacity(0.4),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      SizedBox(height: 24),
+
+                      // Selected files list with animated list items
+                      Container(
+                        height: 200,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white.withOpacity(0.2)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 20,
+                              offset: Offset(0, 10),
+                            ),
+                          ],
+                        ),
+                        child: selectedFiles != null && selectedFiles!.isNotEmpty
                             ? ListView.separated(
                                 padding: EdgeInsets.all(16),
                                 itemCount: selectedFiles!.length,
-                                separatorBuilder: (context, index) => Divider(),
+                                separatorBuilder: (context, index) => Divider(
+                                  color: Colors.white.withOpacity(0.2),
+                                  height: 8,
+                                ),
                                 itemBuilder: (context, index) {
-                                  final fileName = selectedFiles![index]
-                                      .path
-                                      .split('/')
-                                      .last;
-                                  final fileExtension =
-                                      fileName.split('.').last.toLowerCase();
+                                  final fileName = selectedFiles![index].path.split('/').last;
+                                  final fileExtension = fileName.split('.').last.toLowerCase();
 
-                                  return ListTile(
-                                    contentPadding: EdgeInsets.symmetric(
-                                        vertical: 4, horizontal: 8),
-                                    leading: Container(
-                                      padding: EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: fileExtension == 'pdf'
-                                            ? Colors.red.shade100
-                                            : Colors.blue.shade100,
-                                        borderRadius: BorderRadius.circular(10),
+                                  return AnimatedOpacity(
+                                    opacity: 1.0,
+                                    duration: Duration(milliseconds: 300),
+                                    child: ListTile(
+                                      contentPadding: EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+                                      leading: Container(
+                                        padding: EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: fileExtension == 'pdf'
+                                              ? Colors.red.shade400.withOpacity(0.2)
+                                              : Colors.blue.shade400.withOpacity(0.2),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Icon(
+                                          fileExtension == 'pdf' ? Icons.picture_as_pdf : Icons.article,
+                                          color: fileExtension == 'pdf' ? Colors.red.shade700 : Colors.blue.shade700,
+                                          size: 28,
+                                        ),
                                       ),
-                                      child: Icon(
-                                        fileExtension == 'pdf'
-                                            ? Icons.picture_as_pdf
-                                            : Icons.article,
-                                        color: fileExtension == 'pdf'
-                                            ? Colors.red.shade700
-                                            : Colors.blue.shade700,
+                                      title: Text(
+                                        fileName,
+                                        style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.white.withOpacity(0.9),
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                    ),
-                                    title: Text(
-                                      fileName,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w500,
-                                        color: Colors.grey.shade800,
+                                      trailing: IconButton(
+                                        icon: Icon(Icons.close, color: Colors.white.withOpacity(0.7)),
+                                        onPressed: () {
+                                          setState(() {
+                                            selectedFiles!.removeAt(index);
+                                            if (selectedFiles!.isEmpty) {
+                                              selectedFiles = null;
+                                            }
+                                          });
+                                        },
                                       ),
-                                    ),
-                                    trailing: IconButton(
-                                      icon:
-                                          Icon(Icons.close, color: Colors.grey),
-                                      onPressed: () {
-                                        setState(() {
-                                          selectedFiles!.removeAt(index);
-                                          if (selectedFiles!.isEmpty) {
-                                            selectedFiles = null;
-                                          }
-                                        });
-                                      },
                                     ),
                                   );
                                 },
@@ -519,89 +549,117 @@ class _UploadPageState extends State<UploadPage>
                                     Icon(
                                       Icons.upload_file,
                                       size: 60,
-                                      color: Colors.grey.shade400,
+                                      color: Colors.white.withOpacity(0.4),
                                     ),
                                     SizedBox(height: 16),
                                     Text(
                                       'No files selected',
-                                      style: TextStyle(
+                                      style: GoogleFonts.poppins(
                                         fontSize: 16,
-                                        color: Colors.grey.shade600,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.white.withOpacity(0.7),
                                       ),
                                     ),
                                     SizedBox(height: 8),
                                     Text(
                                       'Select PDF or DOCX files',
-                                      style: TextStyle(
+                                      style: GoogleFonts.poppins(
                                         fontSize: 14,
-                                        color: Colors.grey.shade500,
+                                        fontWeight: FontWeight.w400,
+                                        color: Colors.white.withOpacity(0.5),
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
                       ),
-                    ),
 
-                    SizedBox(height: 20),
+                      SizedBox(height: 24),
 
-                    // Upload button
-                    SizedBox(
-                      height: 55,
-                      child: ElevatedButton.icon(
-                        onPressed: _isLoading ? null : uploadFiles,
-                        icon: _isLoading
-                            ? SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : Icon(Icons.cloud_upload, color: Colors.white),
-                        label: Text(
-                          _isLoading ? 'Uploading...' : 'Upload and Analyze',
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green.shade600,
-                          foregroundColor: Colors.white,
-                          disabledBackgroundColor: Colors.green.shade300,
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
+                      // Upload button with animated press effect
+                      GestureDetector(
+                        onTapDown: (_) => _animationController.reverse(),
+                        onTapUp: (_) => _animationController.forward(),
+                        onTapCancel: () => _animationController.forward(),
+                        child: ScaleTransition(
+                          scale: Tween<double>(begin: 1.0, end: 0.95).animate(
+                            CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
                           ),
-                          elevation: 5,
+                          child: ElevatedButton.icon(
+                            onPressed: _isLoading ? null : uploadFiles,
+                            icon: _isLoading
+                                ? SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2.5,
+                                    ),
+                                  )
+                                : Icon(Icons.cloud_upload, color: Colors.white, size: 28),
+                            label: Text(
+                              _isLoading ? 'Uploading...' : 'Upload and Analyze',
+                              style: GoogleFonts.poppins(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green.shade600,
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: Colors.green.shade300,
+                              padding: EdgeInsets.symmetric(vertical: 18, horizontal: 24),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              elevation: 8,
+                              shadowColor: Colors.green.withOpacity(0.4),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
 
-          // Loading overlay
+          // Loading overlay with glassmorphic effect
           if (_isLoading)
             Container(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withOpacity(0.4),
               child: Center(
                 child: Container(
-                  padding: EdgeInsets.all(20),
+                  padding: EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(15),
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white.withOpacity(0.2)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 20,
+                        offset: Offset(0, 10),
+                      ),
+                    ],
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      CircularProgressIndicator(color: Colors.indigo),
+                      CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 3,
+                      ),
                       SizedBox(height: 20),
                       Text(
                         'Processing Resumes...',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
                       ),
                     ],
                   ),
